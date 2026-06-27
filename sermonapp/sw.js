@@ -1,6 +1,6 @@
 // Service worker — app-shell caching for offline use.
 // Bump CACHE when you change any precached file.
-const CACHE = "sermon-notes-v3";
+const CACHE = "sermon-notes-v4";
 
 // On localhost, never cache — so editing files always shows fresh on reload.
 const DEV = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
@@ -56,23 +56,18 @@ self.addEventListener("fetch", (e) => {
   // Never cache API calls or cross-origin (Supabase, CDN libs, Deepgram, etc.)
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
-  // App-shell: serve index.html for navigations (so the PWA opens offline).
-  if (req.mode === "navigate") {
-    e.respondWith(caches.match("./index.html").then((r) => r || fetch(req)));
-    return;
-  }
-
-  // Static assets: cache-first, fall back to network and cache the result.
+  // Network-first: always try for fresh content (so deploys show up immediately),
+  // updating the cache; fall back to cache only when offline.
   e.respondWith(
-    caches.match(req).then(
-      (hit) =>
-        hit ||
-        fetch(req).then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        }).catch(() => hit)
-    )
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        return res;
+      })
+      .catch(() =>
+        caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : undefined))
+      )
   );
 });
 
