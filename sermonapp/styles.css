@@ -172,6 +172,8 @@ textarea { resize: vertical; min-height: 80px; }
   border: 1px solid var(--border); border-bottom: none;
   border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + var(--safe-bottom));
   animation: slideup 0.22s cubic-bezier(.2,.8,.2,1);
+  max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @keyframes slideup { from { transform: translateY(100%); } to { transform: none; } }
 .modal h2 { font-size: 19px; margin-bottom: 4px; }
