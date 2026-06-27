@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VAPID key generator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; line-height: 1.5; }
+    button { font-size: 16px; padding: 10px 16px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
+    pre { background: #f4f4f7; padding: 16px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; }
+    code { background: #f4f4f7; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>VAPID key generator</h1>
+  <p>For the daily push notifications. Click generate, then paste the two values into your
+     Cloudflare Pages environment variables: <code>VAPID_PUBLIC_KEY</code> and <code>VAPID_PRIVATE_KEY</code>.
+     Generate once and keep them — regenerating invalidates existing subscriptions.</p>
+  <button id="gen">Generate keys</button>
+  <pre id="out">(keys will appear here)</pre>
+  <script>
+    function b64url(bytes) {
+      let s = btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
+      return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+    document.getElementById("gen").onclick = async () => {
+      const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+      const pubRaw = await crypto.subtle.exportKey("raw", kp.publicKey);   // 65-byte point
+      const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey);     // jwk.d = private scalar (base64url)
+      document.getElementById("out").textContent =
+        "VAPID_PUBLIC_KEY=" + b64url(pubRaw) + "\n\nVAPID_PRIVATE_KEY=" + jwk.d;
+    };
+  </script>
+</body>
+</html>

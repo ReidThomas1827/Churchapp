@@ -1,0 +1,10 @@
+# Cloudflare Pages headers.
+# Keep the service worker and manifest from being cached so updates ship fast.
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
