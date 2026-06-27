@@ -1,6 +1,6 @@
-// Service worker — app-shell caching for offline use.
+// Service worker — network-first with offline fallback.
 // Bump CACHE when you change any precached file.
-const CACHE = "sermon-notes-v4";
+const CACHE = "sermon-notes-v5";
 
 // On localhost, never cache — so editing files always shows fresh on reload.
 const DEV = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
