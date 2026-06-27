@@ -2,7 +2,7 @@
 // from Settings. No SDK needed — PostgREST is just HTTP.
 import { CONFIG, hasSupabase } from "./config.js";
 
-const base = () => CONFIG.supabaseUrl.replace(/\/+$/, "");
+const base = () => (CONFIG.supabaseUrl || "").replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
 function headers(extra) {
   return {
     apikey: CONFIG.supabaseAnonKey,

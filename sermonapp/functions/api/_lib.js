@@ -27,7 +27,7 @@ export async function gemini(env, prompt, { wantJSON = false } = {}) {
 
 // ---- Supabase (service-role, server side only) ----
 export const supaConfigured = (env) => !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE);
-const supaBase = (env) => env.SUPABASE_URL.replace(/\/+$/, "");
+const supaBase = (env) => (env.SUPABASE_URL || "").replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
 const supaHeaders = (env, extra) => ({
   apikey: env.SUPABASE_SERVICE_ROLE,
   Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE,
