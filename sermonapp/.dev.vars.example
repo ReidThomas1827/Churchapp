@@ -1,0 +1,25 @@
+# Server-side secrets. In production set these in the Cloudflare dashboard:
+#   Pages project → Settings → Environment variables.
+# For local `npx wrangler pages dev` (needs Node), copy this to `.dev.vars`.
+# Never commit `.dev.vars`.
+
+# --- Core (transcription + AI) ---
+DEEPGRAM_API_KEY=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash
+GEMINI_EMBED_MODEL=text-embedding-004
+
+# --- Sync, search index, and push storage (Supabase) ---
+# Service role key is SECRET — server-side only, never in the browser.
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE=
+
+# --- Daily push notifications ---
+# Generate the VAPID pair once by opening /tools/vapid.html in a browser.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+# Shared secret the cron trigger must pass as ?key=...
+CRON_SECRET=
+# IANA timezone for the 9am–9pm quiz window, e.g. America/New_York, America/Chicago.
+QUIZ_TZ=America/New_York
