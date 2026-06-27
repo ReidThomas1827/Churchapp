@@ -10,6 +10,6 @@ export const onRequestGet = ({ env }) =>
     supabase: supaConfigured(env),
     push: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY),
     vapidPublicKey: env.VAPID_PUBLIC_KEY || "",
-    diag: 1,
+    diag: 2,
     envKeys: Object.keys(env),
   });
