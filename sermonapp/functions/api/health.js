@@ -10,6 +10,11 @@ export const onRequestGet = ({ env }) =>
     supabase: supaConfigured(env),
     push: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY),
     vapidPublicKey: env.VAPID_PUBLIC_KEY || "",
-    diag: 2,
+    diag: 3,
     envKeys: Object.keys(env),
+    sr_len: (env.SUPABASE_SERVICE_ROLE || "").length,
+    sr_ws: /^\s|\s$/.test(env.SUPABASE_SERVICE_ROLE || ""),
+    sr_fmt: (env.SUPABASE_SERVICE_ROLE || "").startsWith("sb_secret_"),
+    url_val: env.SUPABASE_URL || "",
+    url_ws: /^\s|\s$/.test(env.SUPABASE_URL || ""),
   });
