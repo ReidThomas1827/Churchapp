@@ -1,4 +1,5 @@
 import { el, todayISO } from "../ui.js";
+import { apiUrl } from "../config.js";
 import { latestQuizSermon, listStudy, lastScore } from "../store.js";
 import { openQuiz } from "./quiz.js";
 
@@ -6,12 +7,25 @@ function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 
-function quizCard({ tag, title, sub, onClick }) {
+function fmtMin(min) {
+  if (min == null) return "";
+  const h = Math.floor(min / 60), m = min % 60;
+  const ampm = h < 12 ? "AM" : "PM";
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+function reminderNote(sched, minKey, sentKey) {
+  if (!sched || sched[minKey] == null) return "";
+  return sched[sentKey] ? `🔔 Reminder sent ~${fmtMin(sched[minKey])}` : `🔔 Reminder set for ${fmtMin(sched[minKey])}`;
+}
+
+function quizCard({ tag, title, sub, note, onClick }) {
   return el("div", { class: "card spread", style: "margin-bottom:14px" }, [
     el("div", {}, [
       el("span", { class: "tag accent", text: tag }),
       el("div", { style: "margin-top:8px;font-weight:650", text: title }),
       el("div", { class: "small muted", text: sub }),
+      note ? el("div", { class: "small muted", text: note }) : null,
     ]),
     el("button", { class: "btn primary", style: "width:auto;flex:none", onClick }, "Take quiz"),
   ]);
@@ -36,6 +50,9 @@ export async function renderDaily(root) {
     root.appendChild(hint);
   }
 
+  let sched = null;
+  try { const s = await fetch(apiUrl("/api/notify-status")).then((r) => (r.ok ? r.json() : null)); sched = s && s.schedule; } catch {}
+
   const sermon = await latestQuizSermon();
   if (sermon) {
     const prev = await lastScore("sermon", sermon.title);
@@ -43,6 +60,7 @@ export async function renderDaily(root) {
       tag: "Today’s sermon quiz",
       title: sermon.title,
       sub: prev ? `Last score: ${prev.score}/${prev.total}` : "Not taken yet",
+      note: reminderNote(sched, "sermonMin", "sermonSent"),
       onClick: () => openQuiz({ type: "sermon", title: sermon.title, transcript: sermon.transcript }),
     }));
   }
@@ -54,6 +72,7 @@ export async function renderDaily(root) {
       tag: "Today’s study quiz",
       title: studyToday.reference,
       sub: prev ? `Last score: ${prev.score}/${prev.total}` : "Not taken yet",
+      note: reminderNote(sched, "studyMin", "studySent"),
       onClick: () => openQuiz({ type: "study", reference: studyToday.reference, title: studyToday.reference }),
     }));
   }
