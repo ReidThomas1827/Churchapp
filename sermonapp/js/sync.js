@@ -26,6 +26,8 @@ export function pushStudy(e) { post("/api/migrate", { study: [e] }).catch(warn);
 export function pushQuiz(q) { post("/api/migrate", { quizzes: [q] }).catch(warn); }
 export function removeSermonRemote(id) { del("/api/migrate", { sermonId: id }).catch(warn); }
 export function removeStudyRemote(id) { del("/api/migrate", { studyId: id }).catch(warn); }
+export function pushFolder(f) { post("/api/migrate", { folders: [f] }).catch(warn); }
+export function removeFolderRemote(id) { del("/api/migrate", { folderId: id }).catch(warn); }
 
 // Pull cloud → local on launch. Returns true if anything changed locally.
 export async function pullAll() {
@@ -44,6 +46,10 @@ export async function pullAll() {
     }
     for (const q of data.quizzes || []) {
       if (!(await db.get("quizHistory", q.id))) { await db.put("quizHistory", q); changed = true; }
+    }
+    for (const f of data.folders || []) {
+      const local = await db.get("folders", f.id);
+      if (!local || newer(f.updatedAt, local.updatedAt || local.createdAt)) { await db.put("folders", f); changed = true; }
     }
   } catch (e) { warn(e); }
   return changed;

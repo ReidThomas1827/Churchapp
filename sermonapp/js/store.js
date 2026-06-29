@@ -2,7 +2,7 @@
 // so syncing can be layered on later without changing callers.
 import * as db from "./db.js";
 import { uid } from "./ui.js";
-import { pushSermon, pushStudy, pushQuiz, removeSermonRemote, removeStudyRemote } from "./sync.js";
+import { pushSermon, pushStudy, pushQuiz, removeSermonRemote, removeStudyRemote, pushFolder, removeFolderRemote } from "./sync.js";
 
 // Sermon status: recorded | transcribing | transcribed | noting | noted | skipped | error
 export async function listSermons() {
@@ -18,11 +18,12 @@ export function saveSermon(s) {
   return p;
 }
 
-export async function createSermon({ title, kind, date, attended, blob, mimeType, durationSec }) {
+export async function createSermon({ title, kind, speaker, date, attended, blob, mimeType, durationSec }) {
   const s = {
     id: uid(),
     title,
     kind: kind || "Sermon",
+    speaker: speaker || "",
     date,
     attended: attended !== false,
     mimeType: mimeType || null,
@@ -30,6 +31,8 @@ export async function createSermon({ title, kind, date, attended, blob, mimeType
     status: attended === false ? "skipped" : "recorded",
     transcript: null,
     notes: null,
+    quizPinned: false,
+    folderId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -57,8 +60,20 @@ export async function dropAudio(id) {
 export async function latestQuizSermon() {
   const all = await listSermons();
   if (!all.length) return null;
-  if (all[0].attended === false) return null; // paused this week
+  // A pinned sermon overrides everything and stays the quiz source until changed.
+  const pinned = all.find((s) => s.quizPinned && s.attended && s.transcript);
+  if (pinned) return pinned;
+  if (all[0].attended === false) return null; // paused this week (nothing pinned)
   return all.find((s) => s.attended && s.transcript) || null;
+}
+
+// Pin one sermon as the quiz source (unpins any others). Pass null to clear all.
+export async function setQuizPin(id) {
+  const all = await listSermons();
+  for (const s of all) {
+    const shouldPin = s.id === id;
+    if (!!s.quizPinned !== shouldPin) { s.quizPinned = shouldPin; await saveSermon(s); }
+  }
 }
 
 // ---- Study plan ----
@@ -99,4 +114,40 @@ export async function listQuizHistory() {
 export async function lastScore(sourceType, title) {
   const all = await listQuizHistory();
   return all.find((r) => r.sourceType === sourceType && r.title === title) || null;
+}
+
+// ---- Folders (nested) ----
+export function getFolder(id) { return db.get("folders", id); }
+export async function listFolders() {
+  const all = await db.getAll("folders");
+  return all.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+export async function createFolder({ name, parentId }) {
+  const f = { id: uid(), name: (name || "").trim(), parentId: parentId || null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  await db.put("folders", f);
+  pushFolder(f);
+  return f;
+}
+export function saveFolder(f) {
+  f.updatedAt = new Date().toISOString();
+  const p = db.put("folders", f);
+  pushFolder(f);
+  return p;
+}
+// Deleting a folder moves its sermons and sub-folders up to its parent — nothing is lost.
+export async function deleteFolder(id) {
+  const folder = await db.get("folders", id);
+  const parentId = folder ? folder.parentId || null : null;
+  for (const f of await db.getAll("folders")) {
+    if (f.parentId === id) { f.parentId = parentId; await saveFolder(f); }
+  }
+  for (const s of await db.getAll("sermons")) {
+    if (s.folderId === id) { s.folderId = parentId; await saveSermon(s); }
+  }
+  await db.del("folders", id);
+  removeFolderRemote(id);
+}
+export async function moveSermon(sermonId, folderId) {
+  const s = await db.get("sermons", sermonId);
+  if (s) { s.folderId = folderId || null; await saveSermon(s); }
 }

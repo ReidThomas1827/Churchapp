@@ -6,7 +6,7 @@ import { el, fmtDate } from "./ui.js";
 function notesToBlocks(sermon) {
   const blocks = [
     { type: "title", text: sermon.title || "Sermon" },
-    { type: "meta", text: [sermon.attended === false ? "Not attended" : (sermon.kind || "Sermon"), fmtDate(sermon.date)].join(" · ") },
+    { type: "meta", text: [sermon.attended === false ? "Not attended" : (sermon.kind || "Sermon"), sermon.speaker, fmtDate(sermon.date)].filter(Boolean).join(" · ") },
   ];
   const n = sermon.notes;
   if (n && typeof n === "object" && !n.raw) {

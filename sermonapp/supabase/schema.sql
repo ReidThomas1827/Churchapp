@@ -14,6 +14,7 @@ create table if not exists sermons (
   id text primary key,
   title text not null,
   kind text default 'Sermon',
+  speaker text,
   date date not null,
   attended boolean not null default true,
   status text not null default 'recorded',
@@ -21,6 +22,17 @@ create table if not exists sermons (
   transcript text,
   notes jsonb,
   mime_type text,
+  quiz_pinned boolean default false,
+  folder_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Nested folders for organizing the archive (parent_id null = top level).
+create table if not exists folders (
+  id text primary key,
+  name text not null,
+  parent_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

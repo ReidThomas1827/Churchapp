@@ -1,7 +1,7 @@
 // Thin IndexedDB wrapper. Local-first storage so the app works offline and
 // before any cloud backend is configured. Audio blobs live in their own store.
 const DB_NAME = "sermon-notes";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise;
 
 export function openDB() {
@@ -14,6 +14,7 @@ export function openDB() {
       if (!db.objectStoreNames.contains("audio")) db.createObjectStore("audio");        // key = sermon id, value = Blob
       if (!db.objectStoreNames.contains("study")) db.createObjectStore("study", { keyPath: "id" });
       if (!db.objectStoreNames.contains("quizHistory")) db.createObjectStore("quizHistory", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("folders")) db.createObjectStore("folders", { keyPath: "id" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

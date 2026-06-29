@@ -1,6 +1,6 @@
 import { el, toast, modal, fmtDuration, todayISO } from "../ui.js";
 import { Recorder, recordingSupported } from "../recorder.js";
-import { createSermon } from "../store.js";
+import { createSermon, listSermons } from "../store.js";
 import { renderDaily } from "./daily.js";
 
 // Kept at module scope so a recording survives tab switches / re-renders.
@@ -101,10 +101,14 @@ async function sermonDetailsModal(result, onSaved) {
   const kind = el("input", { type: "text", value: "Sermon", list: "sn-kinds", autocapitalize: "words", placeholder: "What is this?" });
   const kindList = el("datalist", { id: "sn-kinds" },
     ["Sermon", "Bible study", "Sunday school", "Conference", "Devotional", "Other"].map((v) => el("option", { value: v })));
+  const speakers = [...new Set((await listSermons()).map((s) => s.speaker).filter(Boolean))];
+  const speaker = el("input", { type: "text", list: "sn-speakers", autocapitalize: "words", placeholder: "Who taught it?" });
+  const speakerList = el("datalist", { id: "sn-speakers" }, speakers.map((v) => el("option", { value: v })));
   const date = el("input", { type: "date", value: todayISO() });
   const body = el("div", { class: "stack" }, [
     el("div", {}, [el("label", { class: "field", text: "Title" }), title]),
     el("div", {}, [el("label", { class: "field", text: "Type" }), kind, kindList]),
+    el("div", {}, [el("label", { class: "field", text: "Speaker" }), speaker, speakerList]),
     el("div", {}, [el("label", { class: "field", text: "Date" }), date]),
     el("p", { class: "small muted", text: `Recorded ${fmtDuration(result.durationSec)} of audio.` }),
   ]);
@@ -117,7 +121,7 @@ async function sermonDetailsModal(result, onSaved) {
       {
         label: "Save", class: "primary",
         validate: () => { if (!title.value.trim()) { title.focus(); toast("Add a title first.", "error"); return false; } },
-        value: () => ({ title: title.value.trim(), kind: kind.value.trim() || "Sermon", date: date.value || todayISO() }),
+        value: () => ({ title: title.value.trim(), kind: kind.value.trim() || "Sermon", speaker: speaker.value.trim(), date: date.value || todayISO() }),
       },
     ],
   });
