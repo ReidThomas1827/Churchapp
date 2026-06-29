@@ -3,6 +3,8 @@ import { CONFIG, saveConfig, apiUrl } from "../config.js";
 import { enablePush } from "../push.js";
 import { syncNow, syncEnabled } from "../sync.js";
 import { getMicPermission, requestMicPermission } from "../recorder.js";
+import { listSermons, listStudy, listQuizHistory } from "../store.js";
+import { migrateToCloud } from "../api.js";
 
 function statusLine(label, ok) {
   return el("div", { class: "spread" }, [
@@ -37,6 +39,24 @@ export function openSettings() {
     await syncNow();
     toast("Synced.", "success");
   } }, "Sync now");
+
+  const migrateBtn = el("button", { class: "btn primary" }, "Migrate this device's data to cloud");
+  migrateBtn.addEventListener("click", async () => {
+    const orig = migrateBtn.textContent;
+    migrateBtn.disabled = true; migrateBtn.textContent = "Migrating…";
+    try {
+      const [sermons, study, quizzes] = await Promise.all([listSermons(), listStudy(), listQuizHistory()]);
+      if (!sermons.length && !study.length && !quizzes.length) {
+        toast("Nothing on this device to migrate.");
+      } else {
+        const r = await migrateToCloud({ sermons, study, quizzes });
+        toast(`Migrated ${r.sermons} sermon(s) and ${r.study} study entr${r.study === 1 ? "y" : "ies"} to the cloud.`, "success");
+      }
+    } catch (e) {
+      toast(e.status === 501 ? "Supabase isn't set up on the server yet." : (e.message || "Migration failed."), "error");
+    }
+    migrateBtn.disabled = false; migrateBtn.textContent = orig;
+  });
 
   const pushBtn = el("button", { class: "btn", onClick: () => enablePush() }, "Enable notifications");
 
@@ -80,6 +100,9 @@ export function openSettings() {
       el("div", {}, [el("label", { class: "field", text: "Supabase URL" }), supaUrl]),
       el("div", {}, [el("label", { class: "field", text: "Supabase anon key" }), supaKey]),
       syncBtn,
+      el("hr", { class: "sep" }),
+      el("p", { class: "small muted", text: "One-time: push everything already saved on this device (transcripts, notes, study plan, quiz scores) up to the cloud. Audio stays on the device." }),
+      migrateBtn,
     ]),
     el("div", { class: "card stack" }, [
       el("h3", { text: "Notifications", style: "font-size:15px" }),

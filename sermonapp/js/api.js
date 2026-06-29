@@ -49,3 +49,8 @@ export function search(query, context) {
 export function embedSermon(payload) {
   return postJSON("/api/embed", payload); // { chunks }
 }
+
+// One-time push of all local records to Supabase via the service-role backend.
+export function migrateToCloud(payload) {
+  return postJSON("/api/migrate", payload); // { sermons, study, quizzes }
+}
