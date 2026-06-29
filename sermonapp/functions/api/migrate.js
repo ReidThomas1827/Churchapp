@@ -33,13 +33,15 @@ export async function onRequestPost({ request, env }) {
   return json({ sermons: sermonRows.length, study: studyRows.length, quizzes: quizRows.length });
 }
 
-// Delete a sermon from the cloud by id (also used to clean up test rows).
+// Delete a sermon or study entry from the cloud by id (keeps devices in sync
+// when something is deleted locally).
 export async function onRequestDelete({ request, env }) {
   if (!supaConfigured(env)) return json({ error: "Supabase isn't configured." }, 501);
-  const { sermonId } = await request.json().catch(() => ({}));
-  if (!sermonId) return json({ error: "sermonId required" }, 400);
+  const { sermonId, studyId } = await request.json().catch(() => ({}));
+  if (!sermonId && !studyId) return json({ error: "sermonId or studyId required" }, 400);
   try {
-    await supaDelete(env, "sermons", "id=eq." + encodeURIComponent(sermonId));
+    if (sermonId) await supaDelete(env, "sermons", "id=eq." + encodeURIComponent(sermonId));
+    if (studyId) await supaDelete(env, "study_plan", "id=eq." + encodeURIComponent(studyId));
   } catch (e) {
     return json({ error: e.message }, 502);
   }

@@ -6,7 +6,7 @@ import { openSettings } from "./views/settings.js";
 import { openQuiz } from "./views/quiz.js";
 import { latestQuizSermon, listStudy } from "./store.js";
 import { todayISO, toast } from "./ui.js";
-import { pullAll, syncEnabled } from "./sync.js";
+import { pullAll } from "./sync.js";
 
 const byId = (id) => document.getElementById(id);
 
@@ -59,8 +59,8 @@ switchTab("record");
 handleRoute(location.hash);
 window.addEventListener("hashchange", () => handleRoute(location.hash));
 
-// Pull any changes synced from another device, then refresh the open tab.
-if (syncEnabled()) pullAll().then(() => render(current)).catch(() => {});
+// Pull any changes from the cloud on launch, then refresh the open tab if anything changed.
+pullAll().then((changed) => { if (changed) render(current); }).catch(() => {});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
