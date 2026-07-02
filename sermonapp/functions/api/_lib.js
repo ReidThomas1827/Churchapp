@@ -6,11 +6,14 @@ export const json = (obj, status = 200) =>
 
 // Call Google Gemini. Set wantJSON to parse a JSON response (falls back to
 // { raw } if the model doesn't return clean JSON).
-export async function gemini(env, prompt, { wantJSON = false } = {}) {
+export async function gemini(env, prompt, { wantJSON = false, temperature } = {}) {
   const model = env.GEMINI_MODEL || "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
   const body = { contents: [{ parts: [{ text: prompt }] }] };
-  if (wantJSON) body.generationConfig = { responseMimeType: "application/json" };
+  const gc = {};
+  if (wantJSON) gc.responseMimeType = "application/json";
+  if (temperature != null) gc.temperature = temperature;
+  if (Object.keys(gc).length) body.generationConfig = gc;
 
   const r = await fetch(url, {
     method: "POST",

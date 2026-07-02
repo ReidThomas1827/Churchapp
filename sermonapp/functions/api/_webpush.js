@@ -92,6 +92,7 @@ export async function sendPush(subscription, payloadObj, vapid) {
       "Content-Encoding": "aes128gcm",
       "Content-Type": "application/octet-stream",
       TTL: String(vapid.ttl || 86400),
+      Urgency: "high", // deliver immediately even when the app is closed (iOS)
     },
     body,
   });
