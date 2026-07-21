@@ -19,7 +19,10 @@
       "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo config user.email reidcthomas.05@gmail.com)",
       "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo config user.name 'Reid Thomas')",
       "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo add -A)",
-      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo status --short)"
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo status --short)",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" -X POST \"https://churchapp-b4m.pages.dev/api/notion\" -H \"Content-Type: application/json\" -d '{\"title\":\"test\"}')",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Notion export: live destination picker instead of a hand-typed target ID')",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo push --quiet)"
     ]
   }
 }

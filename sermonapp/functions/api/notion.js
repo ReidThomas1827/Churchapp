@@ -59,20 +59,28 @@ function sermonToBlocks(sermon) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!env.NOTION_API_KEY || !env.NOTION_TARGET_ID)
-    return json({ error: "Notion export isn't configured. Add NOTION_API_KEY and NOTION_TARGET_ID." }, 501);
+  if (!env.NOTION_API_KEY) return json({ error: "Notion export isn't configured. Add NOTION_API_KEY." }, 501);
 
-  const sermon = await request.json().catch(() => null);
-  if (!sermon || !sermon.title) return json({ error: "Sermon data required." }, 400);
+  const body = await request.json().catch(() => null);
+  if (!body || !body.title) return json({ error: "Sermon data required." }, 400);
+  const { targetId: bodyTargetId, targetType, ...sermon } = body;
 
-  const targetId = env.NOTION_TARGET_ID;
+  // targetId/targetType come from the in-app picker (preferred). Fall back to the
+  // legacy NOTION_TARGET_ID env var (auto-detecting page vs database) if set.
+  const targetId = bodyTargetId || env.NOTION_TARGET_ID;
+  if (!targetId) return json({ error: "Choose a Notion destination first." }, 400);
   const headers = notionHeaders(env);
 
-  // Detect whether the target is a database (row-per-sermon) or a page (sub-page-per-sermon).
   let parent, properties;
-  const dbRes = await fetch(`https://api.notion.com/v1/databases/${targetId}`, { headers });
-  if (dbRes.ok) {
-    const db = await dbRes.json();
+  let db = null;
+  if (targetType === "database") {
+    const r = await fetch(`https://api.notion.com/v1/databases/${targetId}`, { headers });
+    db = r.ok ? await r.json() : { properties: {} };
+  } else if (!targetType) {
+    const r = await fetch(`https://api.notion.com/v1/databases/${targetId}`, { headers });
+    if (r.ok) db = await r.json();
+  }
+  if (db) {
     const titleProp = Object.entries(db.properties || {}).find(([, v]) => v.type === "title");
     const titleKey = titleProp ? titleProp[0] : "Name";
     parent = { database_id: targetId };

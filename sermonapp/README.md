@@ -65,7 +65,6 @@ variables below (**Settings → Environment variables**), then redeploy.
 | `CRON_SECRET` | Protects `/api/cron` | make up a long random string |
 | `QUIZ_TZ` | Quiz time window | your IANA timezone, e.g. `America/New_York` |
 | `NOTION_API_KEY` | Export to Notion | <https://notion.so/my-integrations> → New integration → Internal Integration Secret |
-| `NOTION_TARGET_ID` | Export to Notion | the ID of the Notion page or database exports go into (see below) |
 
 The minimum to record + transcribe + get notes is just `DEEPGRAM_API_KEY` + `GEMINI_API_KEY`.
 Everything else is additive.
@@ -83,14 +82,14 @@ Every device then pushes on save and pulls on launch automatically.
 ### Notion export
 
 1. Create an internal integration at <https://notion.so/my-integrations> → copy its secret into
-   `NOTION_API_KEY`.
-2. Decide where exports should land: either a **database** (each sermon becomes a row) or a plain
-   **page** (each sermon becomes a sub-page) — whichever fits how you already use Notion.
-3. Open that page/database in Notion → **"..." menu → Connections → your integration**. This step
-   is required — Notion rejects the export otherwise (you'll see a 403/404 from `/api/notion`).
-4. Copy its ID: it's the 32-character code in the page's URL (the part right before any `?`),
-   e.g. `notion.so/My-Page-<b>1a2b3c4d5e6f...</b>`. Put it in `NOTION_TARGET_ID` → redeploy.
-5. On a sermon's detail screen, tap **Export to Notion**.
+   `NOTION_API_KEY` → redeploy.
+2. In Notion, open each page or database you want available as an export destination → **"..."
+   menu → Connections → add your integration**. This step is required per page/database — Notion
+   only shows the integration what's explicitly shared with it (there's no workspace-wide toggle
+   for internal integrations).
+3. On a sermon's detail screen, tap **Export to Notion** — the app lists everything you've shared
+   and lets you pick (a database becomes a row per sermon, a page becomes a sub-page). No ID to
+   find or copy; your last choice is remembered as the default.
 
 ### Notifications (after Supabase is set up)
 

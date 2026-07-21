@@ -26,8 +26,7 @@ QUIZ_TZ=America/New_York
 
 # --- Notion export ---
 # Internal integration secret from notion.so/my-integrations (starts with "secret_" or "ntn_").
+# The destination is picked in-app (no target ID needed here) — just remember to
+# share each page/database you want to use with this integration in Notion's
+# "..." menu → Connections.
 NOTION_API_KEY=
-# The page ID or database ID exports should go into. IMPORTANT: in Notion, open
-# that page/database → "..." menu → Connections → add your integration, or
-# Notion will reject every export with a 403/404.
-NOTION_TARGET_ID=

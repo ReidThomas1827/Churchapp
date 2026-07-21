@@ -3,7 +3,7 @@ import {
   listSermons, getSermon, getAudio, saveSermon, deleteSermon, dropAudio, setQuizPin,
   listFolders, getFolder, createFolder, saveFolder, deleteFolder, moveSermon,
 } from "../store.js";
-import { transcribe, generateNotes, embedSermon, exportNotion } from "../api.js";
+import { transcribe, generateNotes, embedSermon, exportNotion, listNotionDestinations } from "../api.js";
 import { exportPDF, exportDOCX } from "../export.js";
 import { openQuiz } from "./quiz.js";
 
@@ -170,6 +170,52 @@ function moveToFolderModal(s, refresh) {
   });
 }
 
+const LAST_NOTION_TARGET_KEY = "sn_last_notion_target";
+
+// Lets the user pick from every page/database shared with the Notion integration
+// (fetched live via Search), so no ID ever has to be copied by hand. Remembers
+// the last choice as the default for next time.
+function pickNotionDestination() {
+  return new Promise(async (resolve) => {
+    const rootEl = document.getElementById("modal-root");
+    const close = (val) => { backdrop.remove(); resolve(val); };
+
+    const body = el("div", { class: "stack", style: "max-height:60vh;overflow:auto" }, [spinnerRow("Loading your Notion pages…")]);
+    const card = el("div", { class: "modal" }, [
+      el("div", { class: "grip" }), el("h2", { text: "Send to Notion" }),
+      el("p", { class: "small muted", text: "Pick a page or database you've shared with your integration." }),
+      body,
+      el("button", { class: "btn", style: "margin-top:12px", onClick: () => close(null) }, "Cancel"),
+    ]);
+    const backdrop = el("div", { class: "modal-backdrop", onClick: (e) => { if (e.target === backdrop) close(null); } }, [card]);
+    rootEl.append(backdrop);
+
+    let items = [];
+    try {
+      const r = await listNotionDestinations();
+      items = r.items || [];
+    } catch (e) {
+      body.replaceChildren(el("p", { class: "small muted", text: e.status === 501 ? "Add your Notion API key in Cloudflare first." : (e.message || "Couldn't load Notion pages.") }));
+      return;
+    }
+    if (!items.length) {
+      body.replaceChildren(el("p", { class: "small muted", text: "Nothing shared yet. In Notion, open a page or database → \"...\" menu → Connections → add your integration, then try again." }));
+      return;
+    }
+
+    let lastId = null;
+    try { lastId = JSON.parse(localStorage.getItem(LAST_NOTION_TARGET_KEY) || "null")?.id; } catch {}
+    items.sort((a, b) => (a.id === lastId ? -1 : b.id === lastId ? 1 : 0));
+
+    body.replaceChildren(...items.map((it) =>
+      el("button", { class: "btn ghost", style: "justify-content:flex-start", onClick: () => {
+        localStorage.setItem(LAST_NOTION_TARGET_KEY, JSON.stringify(it));
+        close(it);
+      } }, (it.type === "database" ? "🗂️ " : "📄 ") + it.title + (it.id === lastId ? "  (last used)" : ""))
+    ));
+  });
+}
+
 async function editSermonModal(s, refresh) {
   const title = el("input", { type: "text", value: s.title || "", autocapitalize: "words" });
   const kind = el("input", { type: "text", value: s.kind || "Sermon", list: "sn-kinds-edit", autocapitalize: "words" });
@@ -321,14 +367,16 @@ async function renderDetail(root, id) {
   ]);
   const notionBtn = el("button", { class: "btn", style: "margin-top:10px" }, "Export to Notion");
   notionBtn.addEventListener("click", async () => {
+    const dest = await pickNotionDestination();
+    if (!dest) return;
     const orig = notionBtn.textContent;
     notionBtn.disabled = true; notionBtn.textContent = "Sending to Notion…";
     try {
-      const { url } = await exportNotion(s);
+      const { url } = await exportNotion({ ...s, targetId: dest.id, targetType: dest.type });
       toast("Sent to Notion.", "success");
       if (url) window.open(url, "_blank");
     } catch (e) {
-      toast(e.status === 501 ? "Add your Notion API key and target in Cloudflare first." : (e.message || "Notion export failed."), "error");
+      toast(e.status === 501 ? "Add your Notion API key in Cloudflare first." : (e.message || "Notion export failed."), "error");
     }
     notionBtn.disabled = false; notionBtn.textContent = orig;
   });

@@ -55,7 +55,13 @@ export function migrateToCloud(payload) {
   return postJSON("/api/migrate", payload); // { sermons, study, quizzes }
 }
 
-// Export a sermon to Notion as a new page (sub-page or database row, auto-detected).
-export function exportNotion(sermon) {
-  return postJSON("/api/notion", sermon); // { url }
+// List every Notion page/database shared with the integration, for the export picker.
+export function listNotionDestinations() {
+  return fetch(apiUrl("/api/notion-destinations")).then(handle); // { items: [{id, type, title}] }
+}
+
+// Export a sermon to Notion as a new page (sub-page or database row).
+// payload = { ...sermon fields, targetId, targetType }
+export function exportNotion(payload) {
+  return postJSON("/api/notion", payload); // { url }
 }
