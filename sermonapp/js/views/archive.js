@@ -3,7 +3,7 @@ import {
   listSermons, getSermon, getAudio, saveSermon, deleteSermon, dropAudio, setQuizPin,
   listFolders, getFolder, createFolder, saveFolder, deleteFolder, moveSermon,
 } from "../store.js";
-import { transcribe, generateNotes, embedSermon } from "../api.js";
+import { transcribe, generateNotes, embedSermon, exportNotion } from "../api.js";
 import { exportPDF, exportDOCX } from "../export.js";
 import { openQuiz } from "./quiz.js";
 
@@ -319,6 +319,19 @@ async function renderDetail(root, id) {
     el("button", { class: "btn", onClick: () => exportPDF(s).catch((e) => toast(e.message || "Export failed", "error")) }, "Export PDF"),
     el("button", { class: "btn", onClick: () => exportDOCX(s).catch((e) => toast(e.message || "Export failed", "error")) }, "Export Word"),
   ]);
+  const notionBtn = el("button", { class: "btn", style: "margin-top:10px" }, "Export to Notion");
+  notionBtn.addEventListener("click", async () => {
+    const orig = notionBtn.textContent;
+    notionBtn.disabled = true; notionBtn.textContent = "Sending to Notion…";
+    try {
+      const { url } = await exportNotion(s);
+      toast("Sent to Notion.", "success");
+      if (url) window.open(url, "_blank");
+    } catch (e) {
+      toast(e.status === 501 ? "Add your Notion API key and target in Cloudflare first." : (e.message || "Notion export failed."), "error");
+    }
+    notionBtn.disabled = false; notionBtn.textContent = orig;
+  });
   const delBtn = el("button", {
     class: "btn danger",
     onClick: async () => {
@@ -332,5 +345,5 @@ async function renderDetail(root, id) {
 
   root.append(back, head, el("hr", { class: "sep" }), actions,
     (s.notes || s.transcript) ? content : el("p", { class: "muted small", text: s.attended ? "Transcribe the audio to unlock notes, quizzes, and export." : "This week was marked as not attending." }),
-    el("hr", { class: "sep" }), s.attended ? exportRow : null, delBtn);
+    el("hr", { class: "sep" }), s.attended ? exportRow : null, s.attended ? notionBtn : null, delBtn);
 }

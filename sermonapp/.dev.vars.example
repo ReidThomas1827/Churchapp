@@ -23,3 +23,11 @@ VAPID_SUBJECT=mailto:you@example.com
 CRON_SECRET=
 # IANA timezone for the 9am–9pm quiz window, e.g. America/New_York, America/Chicago.
 QUIZ_TZ=America/New_York
+
+# --- Notion export ---
+# Internal integration secret from notion.so/my-integrations (starts with "secret_" or "ntn_").
+NOTION_API_KEY=
+# The page ID or database ID exports should go into. IMPORTANT: in Notion, open
+# that page/database → "..." menu → Connections → add your integration, or
+# Notion will reject every export with a 403/404.
+NOTION_TARGET_ID=

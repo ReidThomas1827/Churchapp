@@ -1,7 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(py -m http.server 8200 --bind 127.0.0.1)",
+      "Bash(py -m http.server 8201 --bind 127.0.0.1)",
+      "Bash(py -m http.server 8202 --bind 127.0.0.1)",
+      "Bash(powershell -Command 'Get-CimInstance Win32_Process -Filter \"CommandLine LIKE '\\\\''%http.server 820%'\\\\''\" | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force } catch {} }')",
+      "Bash(py -m http.server 8203 --bind 127.0.0.1)",
+      "Bash([ -d \"$REPO/.git\" ])",
+      "Bash(echo \"repo exists\")",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo remote -v)",
+      "Bash(echo \"MISSING\")",
+      "Bash(REPO=\"/c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo\" *)",
+      "Bash(rm -rf /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo)",
+      "Bash(git clone *)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(cp -rf /c/Users/reidc/OneDrive/sermonapp/. /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo/sermonapp/)",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo config user.email reidcthomas.05@gmail.com)",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo config user.name 'Reid Thomas')",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo add -A)",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo status --short)"
     ]
   }
 }

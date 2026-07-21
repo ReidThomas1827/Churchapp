@@ -64,20 +64,33 @@ variables below (**Settings → Environment variables**), then redeploy.
 | `VAPID_SUBJECT` | Push (a `mailto:` URL) | your email |
 | `CRON_SECRET` | Protects `/api/cron` | make up a long random string |
 | `QUIZ_TZ` | Quiz time window | your IANA timezone, e.g. `America/New_York` |
-
-> **Two different Supabase keys:** the **service_role** key is a server secret (env var
-> above, never in the browser). The **anon** key is public and goes in the app's **Settings**
-> screen on your phone. Don't mix them up.
+| `NOTION_API_KEY` | Export to Notion | <https://notion.so/my-integrations> → New integration → Internal Integration Secret |
+| `NOTION_TARGET_ID` | Export to Notion | the ID of the Notion page or database exports go into (see below) |
 
 The minimum to record + transcribe + get notes is just `DEEPGRAM_API_KEY` + `GEMINI_API_KEY`.
 Everything else is additive.
 
 ### Supabase (sync + search + notifications)
 
+Sync is fully automatic — no key ever goes on the phone. Just:
 1. Create a free project at <https://supabase.com>.
 2. SQL Editor → paste `supabase/schema.sql` → Run.
-3. Copy the **Project URL** and the **service_role** key into the Cloudflare env vars.
-4. On your phone, open the app → **Settings** → paste the **Project URL** and **anon** key → Save.
+3. Copy the **Project URL** and the **service_role** key into the Cloudflare env vars
+   (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE`) → redeploy.
+
+Every device then pushes on save and pulls on launch automatically.
+
+### Notion export
+
+1. Create an internal integration at <https://notion.so/my-integrations> → copy its secret into
+   `NOTION_API_KEY`.
+2. Decide where exports should land: either a **database** (each sermon becomes a row) or a plain
+   **page** (each sermon becomes a sub-page) — whichever fits how you already use Notion.
+3. Open that page/database in Notion → **"..." menu → Connections → your integration**. This step
+   is required — Notion rejects the export otherwise (you'll see a 403/404 from `/api/notion`).
+4. Copy its ID: it's the 32-character code in the page's URL (the part right before any `?`),
+   e.g. `notion.so/My-Page-<b>1a2b3c4d5e6f...</b>`. Put it in `NOTION_TARGET_ID` → redeploy.
+5. On a sermon's detail screen, tap **Export to Notion**.
 
 ### Notifications (after Supabase is set up)
 

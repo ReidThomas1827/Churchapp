@@ -24,6 +24,7 @@ export function openSettings() {
         statusLine("Gemini — notes, quizzes, search", h.gemini),
         statusLine("Supabase — cloud sync", h.supabase),
         statusLine("Web Push — daily notifications", h.push),
+        statusLine("Notion — export", h.notion),
         el("div", { class: "small muted", text: "Model: " + (h.model || "default") })
       );
     })

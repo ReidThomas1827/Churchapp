@@ -54,3 +54,8 @@ export function embedSermon(payload) {
 export function migrateToCloud(payload) {
   return postJSON("/api/migrate", payload); // { sermons, study, quizzes }
 }
+
+// Export a sermon to Notion as a new page (sub-page or database row, auto-detected).
+export function exportNotion(sermon) {
+  return postJSON("/api/notion", sermon); // { url }
+}
