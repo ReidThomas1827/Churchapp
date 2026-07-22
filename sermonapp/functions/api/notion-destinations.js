@@ -34,10 +34,7 @@ export async function onRequestGet({ env }) {
     const items = (data.results || [])
       .filter((o) => o.object === "page" || o.object === "database")
       .map((o) => ({ id: o.id, type: o.object, title: titleOf(o) }));
-
-    const whoami = await fetch("https://api.notion.com/v1/users/me", { headers }).then((x) => x.json()).catch((e) => ({ err: e.message }));
-
-    return json({ items, diag: { rawResultCount: (data.results || []).length, hasMore: data.has_more, whoami } });
+    return json({ items });
   } catch (e) {
     return json({ error: e.message }, 502);
   }
