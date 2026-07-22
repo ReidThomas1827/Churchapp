@@ -11,6 +11,4 @@ export const onRequestGet = ({ env }) =>
     push: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY),
     vapidPublicKey: env.VAPID_PUBLIC_KEY || "",
     notion: !!env.NOTION_API_KEY,
-    diag: 1,
-    envKeys: Object.keys(env),
   });
