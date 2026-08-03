@@ -1,4 +1,4 @@
-import { el, toast, modal, fmtDuration, todayISO } from "../ui.js";
+import { el, toast, modal, fmtDuration, fmtDateShort, todayISO } from "../ui.js";
 import { Recorder, recordingSupported } from "../recorder.js";
 import { createSermon, listSermons } from "../store.js";
 import { renderDaily } from "./daily.js";
@@ -121,7 +121,10 @@ async function sermonDetailsModal(result, onSaved) {
       {
         label: "Save", class: "primary",
         validate: () => { if (!title.value.trim()) { title.focus(); toast("Add a title first.", "error"); return false; } },
-        value: () => ({ title: title.value.trim(), kind: kind.value.trim() || "Sermon", speaker: speaker.value.trim(), date: date.value || todayISO() }),
+        value: () => {
+          const d = date.value || todayISO();
+          return { title: `${title.value.trim()} — ${fmtDateShort(d)}`, kind: kind.value.trim() || "Sermon", speaker: speaker.value.trim(), date: d };
+        },
       },
     ],
   });

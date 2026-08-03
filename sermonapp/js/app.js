@@ -41,7 +41,7 @@ byId("settings-btn").addEventListener("click", openSettings);
 async function takeSermonQuiz() {
   const s = await latestQuizSermon();
   if (!s) return toast("No sermon quiz is available yet.");
-  openQuiz({ type: "sermon", title: s.title, transcript: s.transcript });
+  openQuiz({ type: "sermon", title: s.title, transcript: s.transcript, notes: s.notes });
 }
 async function takeStudyQuiz() {
   const entries = await listStudy();

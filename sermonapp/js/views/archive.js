@@ -1,4 +1,4 @@
-import { el, clear, toast, confirmDialog, modal, fmtDate, fmtDuration, chevron, spinnerRow } from "../ui.js";
+import { el, clear, toast, confirmDialog, modal, fmtDate, fmtDateShort, fmtDuration, chevron, spinnerRow } from "../ui.js";
 import {
   listSermons, getSermon, getAudio, saveSermon, deleteSermon, dropAudio, setQuizPin,
   listFolders, getFolder, createFolder, saveFolder, deleteFolder, moveSermon,
@@ -238,10 +238,18 @@ async function editSermonModal(s, refresh) {
     ],
   });
   if (!ok) return;
-  s.title = title.value.trim();
+  const newDate = date.value || s.date;
+  let newTitle = title.value.trim();
+  // If the title still ends with the old date's suffix (i.e. wasn't hand-edited
+  // away from it), keep the baked-in date in sync when the date changes.
+  const oldSuffix = " — " + fmtDateShort(s.date);
+  if (newDate !== s.date && newTitle.endsWith(oldSuffix)) {
+    newTitle = newTitle.slice(0, -oldSuffix.length) + " — " + fmtDateShort(newDate);
+  }
+  s.title = newTitle;
   s.kind = kind.value.trim() || "Sermon";
   s.speaker = speaker.value.trim();
-  s.date = date.value || s.date;
+  s.date = newDate;
   await saveSermon(s);
   toast("Saved.", "success");
   refresh();
@@ -344,7 +352,7 @@ async function renderDetail(root, id) {
   }
 
   if (s.transcript) {
-    actions.append(el("button", { class: "btn", onClick: () => openQuiz({ type: "sermon", title: s.title, transcript: s.transcript }) }, "Quiz me on this"));
+    actions.append(el("button", { class: "btn", onClick: () => openQuiz({ type: "sermon", title: s.title, transcript: s.transcript, notes: s.notes }) }, "Quiz me on this"));
     actions.append(el("button", {
       class: s.quizPinned ? "btn primary" : "btn",
       onClick: async () => {

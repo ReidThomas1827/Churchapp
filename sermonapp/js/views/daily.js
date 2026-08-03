@@ -61,7 +61,7 @@ export async function renderDaily(root) {
       title: sermon.title,
       sub: prev ? `Last score: ${prev.score}/${prev.total}` : "Not taken yet",
       note: reminderNote(sched, "sermonMin", "sermonSent"),
-      onClick: () => openQuiz({ type: "sermon", title: sermon.title, transcript: sermon.transcript }),
+      onClick: () => openQuiz({ type: "sermon", title: sermon.title, transcript: sermon.transcript, notes: sermon.notes }),
     }));
   }
 

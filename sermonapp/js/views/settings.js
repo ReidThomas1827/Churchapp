@@ -4,7 +4,7 @@ import { enablePush } from "../push.js";
 import { syncNow } from "../sync.js";
 import { getMicPermission, requestMicPermission } from "../recorder.js";
 import { listSermons, listStudy, listQuizHistory } from "../store.js";
-import { migrateToCloud } from "../api.js";
+import { migrateToCloud, embedSermon } from "../api.js";
 
 function statusLine(label, ok) {
   return el("div", { class: "spread" }, [
@@ -75,6 +75,26 @@ export function openSettings() {
 
   const pushBtn = el("button", { class: "btn", onClick: () => enablePush() }, "Enable notifications");
 
+  // ---- Search index ----
+  const reindexBtn = el("button", { class: "btn" }, "Reindex all sermons for search");
+  reindexBtn.addEventListener("click", async () => {
+    const orig = reindexBtn.textContent;
+    reindexBtn.disabled = true;
+    try {
+      const sermons = (await listSermons()).filter((s) => s.transcript);
+      if (!sermons.length) { toast("No transcribed sermons to index yet."); return; }
+      let done = 0;
+      for (const s of sermons) {
+        reindexBtn.textContent = `Indexing ${++done}/${sermons.length}…`;
+        try { await embedSermon({ sermonId: s.id, title: s.title, transcript: s.transcript, notes: s.notes }); } catch { /* keep going on individual failures */ }
+      }
+      toast(`Indexed ${done} sermon(s) for search.`, "success");
+    } catch (e) {
+      toast(e.status === 501 ? "Search indexing needs Supabase + Gemini configured." : (e.message || "Reindexing failed."), "error");
+    }
+    reindexBtn.disabled = false; reindexBtn.textContent = orig;
+  });
+
   const body = el("div", { class: "stack" }, [
     el("div", { class: "card stack" }, [
       el("div", { class: "spread" }, [el("h3", { text: "Microphone", style: "font-size:15px" }), micStatus]),
@@ -89,6 +109,11 @@ export function openSettings() {
       el("hr", { class: "sep" }),
       el("p", { class: "small muted", text: "Recorded things before sync was set up? Tap once to push everything already on this device up to the cloud." }),
       migrateBtn,
+    ]),
+    el("div", { class: "card stack" }, [
+      el("h3", { text: "Search index", style: "font-size:15px" }),
+      el("p", { class: "small muted", text: "AI search works best when every sermon is indexed. New sermons index automatically after notes are generated — tap this once to also cover sermons noted before that started, or anytime search feels like it's missing older material." }),
+      reindexBtn,
     ]),
     el("div", { class: "card stack" }, [
       el("h3", { text: "Notifications", style: "font-size:15px" }),

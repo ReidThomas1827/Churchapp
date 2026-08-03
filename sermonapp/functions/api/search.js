@@ -9,14 +9,21 @@ export async function onRequestPost({ request, env }) {
   const { query, context } = await request.json().catch(() => ({}));
   if (!query) return json({ error: "No query provided." }, 400);
 
+  // Blend the best AI-indexed matches (if any) with the full local context the
+  // client always sends — indexed matches help focus the answer, but we never
+  // drop full coverage in favor of a possibly-incomplete index (older sermons
+  // may not be indexed yet; see the "Reindex all" button in Settings).
   let material = context || "";
   if (supaConfigured(env)) {
     try {
       const qvec = await geminiEmbed(env, query);
       const matches = await supaRpc(env, "match_embeddings", { query_embedding: toVector(qvec), match_count: 8 });
-      if (Array.isArray(matches) && matches.length) material = matches.map((m) => m.chunk_text).join("\n---\n");
+      if (Array.isArray(matches) && matches.length) {
+        const best = matches.map((m) => m.chunk_text).join("\n---\n");
+        material = `--- Most relevant excerpts for this question ---\n${best}\n\n--- Full sermon archive (for anything not covered above) ---\n${material}`;
+      }
     } catch {
-      /* fall back to the context provided by the client */
+      /* fall back to just the full context provided by the client */
     }
   }
 
@@ -25,7 +32,7 @@ export async function onRequestPost({ request, env }) {
 Question: ${query}
 
 --- Material ---
-${String(material).slice(0, 40000)}`;
+${String(material).slice(0, 45000)}`;
 
   try {
     return json({ answer: await gemini(env, prompt) });

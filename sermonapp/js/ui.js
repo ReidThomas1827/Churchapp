@@ -91,6 +91,15 @@ export function fmtDate(iso) {
   } catch { return iso; }
 }
 
+// Short form for baking into titles, e.g. "Jul 21, 2026" (no weekday).
+export function fmtDateShort(iso) {
+  try {
+    return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+      month: "short", day: "numeric", year: "numeric",
+    });
+  } catch { return iso; }
+}
+
 export function todayISO() {
   const d = new Date();
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
