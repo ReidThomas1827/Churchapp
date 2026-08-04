@@ -23,7 +23,11 @@ export async function onRequestGet({ env }) {
       })),
       study: study.map((r) => ({ id: r.id, date: r.date, reference: r.reference, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at })),
       quizzes: quizzes.map((r) => ({ id: r.id, sourceType: r.source_type, title: r.title, score: r.score, total: r.total, takenAt: r.taken_at })),
-      folders: folders.map((r) => ({ id: r.id, name: r.name, parentId: r.parent_id || null, createdAt: r.created_at, updatedAt: r.updated_at })),
+      folders: folders.map((r) => ({
+        id: r.id, name: r.name, parentId: r.parent_id || null,
+        notionTargetId: r.notion_target_id || null, notionTargetType: r.notion_target_type || null,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+      })),
     });
   } catch (e) {
     return json({ error: e.message }, 502);

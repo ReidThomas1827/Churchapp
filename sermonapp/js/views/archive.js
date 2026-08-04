@@ -120,16 +120,45 @@ async function newFolderModal(parentId, refresh) {
   if (ok) { await createFolder({ name: name.value.trim(), parentId }); toast("Folder created.", "success"); refresh(); }
 }
 
+// Walks up the folder tree from `folderId` and returns the nearest folder that
+// has a Notion destination configured, or null if none do. Used to auto-export
+// a sermon the moment its notes finish generating.
+async function resolveFolderTarget(folderId) {
+  let id = folderId;
+  while (id) {
+    const f = await getFolder(id);
+    if (!f) return null;
+    if (f.notionTargetId) return { id: f.notionTargetId, type: f.notionTargetType || "page" };
+    id = f.parentId;
+  }
+  return null;
+}
+
 async function folderMenu(f, root) {
+  const destLabel = f.notionTargetId ? "Change Notion destination…" : "Set Notion destination…";
   const choice = await modal({
     title: f.name,
-    body: el("p", { class: "small muted", text: "What would you like to do with this folder?" }),
+    body: el("div", { class: "stack" }, [
+      el("p", { class: "small muted", text: "What would you like to do with this folder?" }),
+      f.notionTargetId ? el("p", { class: "small muted", text: "Sermons here auto-export to Notion once notes are generated." }) : null,
+    ]),
     actions: [
       { label: "Rename", value: "rename" },
+      { label: destLabel, value: "notion" },
       { label: "Delete", class: "danger", value: "delete" },
       { label: "Cancel", class: "ghost", value: null },
     ],
   });
+  if (choice === "notion") {
+    const dest = await pickNotionDestination();
+    if (dest) {
+      f.notionTargetId = dest.id;
+      f.notionTargetType = dest.type;
+      await saveFolder(f);
+      toast(`Sermons in "${f.name}" will auto-export to Notion.`, "success");
+    }
+    return;
+  }
   if (choice === "rename") {
     const name = el("input", { type: "text", value: f.name, autocapitalize: "words" });
     const ok = await modal({
@@ -342,6 +371,15 @@ async function renderDetail(root, id) {
         s.notes = notes; s.status = "noted"; await saveSermon(s);
         embedSermon({ sermonId: s.id, title: s.title, transcript: s.transcript, notes }).catch(() => {});
         toast("Notes ready.", "success");
+        const target = await resolveFolderTarget(s.folderId);
+        if (target) {
+          try {
+            await exportNotion({ ...s, notes, targetId: target.id, targetType: target.type });
+            toast("Also sent to Notion.", "success");
+          } catch (e) {
+            toast("Notes ready, but the Notion export failed: " + (e.message || ""), "error");
+          }
+        }
       } catch (e) {
         s.status = "transcribed"; await saveSermon(s);
         toast(e.status === 501 ? "Add your Gemini key in Settings first." : (e.message || "Couldn't generate notes."), "error");

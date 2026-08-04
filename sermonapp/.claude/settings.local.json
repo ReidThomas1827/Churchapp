@@ -74,7 +74,26 @@
       "Bash(py -m http.server 8350 --bind 127.0.0.1)",
       "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Bake the date into the sermon title \\(e.g. '\\\\''Title — Jul 21, 2026'\\\\''\\)')",
       "Bash(SCRATCH=\"/c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad\" *)",
-      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Quiz variety \\(real scripture text + notes-driven rotating focus\\), blended search index, organized Notion export \\(icon/TOC/toggles/database columns\\)')"
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Quiz variety \\(real scripture text + notes-driven rotating focus\\), blended search index, organized Notion export \\(icon/TOC/toggles/database columns\\)')",
+      "Bash(curl -s -X POST https://churchapp-b4m.pages.dev/api/quiz -H 'Content-Type: application/json' -d '{\"type\":\"sermon\",\"title\":\"t\",\"transcript\":\"Paul writes that suffering produces endurance, endurance produces character, and character produces hope. We are called to love our neighbor, forgive freely, and pray without ceasing during hardship.\",\"notes\":{\"summary\":\"A sermon on suffering, endurance, and hope through trials.\",\"sections\":[{\"heading\":\"Suffering produces endurance\",\"points\":[\"Trials build patience\"]},{\"heading\":\"Love your neighbor\",\"points\":[\"Practical acts of love in hard times\"]}],\"takeaways\":[\"Pray continually\",\"Forgive others as Christ forgave us\"]}}')",
+      "Bash(curl -s -X POST https://churchapp-b4m.pages.dev/api/quiz -H 'Content-Type: application/json' -d '{\"type\":\"sermon\",\"title\":\"t\",\"transcript\":\"Paul writes that suffering produces endurance, endurance produces character, and character produces hope. We are called to love our neighbor, forgive freely, and pray without ceasing during hardship.\",\"notes\":{\"summary\":\"A sermon on suffering, endurance, and hope through trials.\",\"sections\":[{\"heading\":\"Suffering produces endurance\",\"points\":[\"Trials build patience\"]},{\"heading\":\"Love your neighbor\",\"points\":[\"Practical acts of love in hard times\"]}],\"takeaways\":[\"Pray continually\",\"Forgive others as Christ forgave us\"]}}' -w '\\\\nHTTP:%{http_code}\\\\n')",
+      "Bash(cp -f /c/Users/reidc/OneDrive/sermonapp/functions/api/dbtest-temp.js /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo/sermonapp/functions/api/dbtest-temp.js)",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Temp: verify database auto-column logic')",
+      "Bash(curl -s -X POST \"https://churchapp-b4m.pages.dev/api/dbtest-temp\" -w \"\\\\nHTTP:%{http_code}\\\\n\")",
+      "Bash(curl -s -X POST https://churchapp-b4m.pages.dev/api/notion -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s -X POST \"https://churchapp-b4m.pages.dev/api/dbtest-temp\")",
+      "Bash(curl -s \"https://churchapp-b4m.pages.dev/api/notion-destinations\")",
+      "Bash(curl -s -X DELETE https://churchapp-b4m.pages.dev/api/dbtest-temp -H 'Content-Type: application/json' -d '{\"id\":\"3b2c700e-7951-81d2-bb9f-dd6ea307712a\"}')",
+      "Bash(curl -s -X DELETE https://churchapp-b4m.pages.dev/api/dbtest-temp -H 'Content-Type: application/json' -d '{\"id\":\"3b2c700e-7951-81de-8efc-fbe7f2b9b69f\"}')",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Remove temporary Notion test endpoint')",
+      "Bash(curl -s \"https://churchapp-b4m.pages.dev/api/pull\" -o /tmp/pull.json)",
+      "Bash(curl -s \"https://churchapp-b4m.pages.dev/api/pull\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(cp -f /c/Users/reidc/OneDrive/sermonapp/functions/api/notion-inspect-temp.js /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo/sermonapp/functions/api/notion-inspect-temp.js)",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Temp: inspect Notion page structure')",
+      "Bash(taskkill //F //PID 42544)",
+      "Bash(git -C /c/Users/reidc/AppData/Local/Temp/claude/C--Users-reidc-OneDrive-sermonapp/02260cbc-7606-46a7-8867-3d4eeb53f666/scratchpad/churchapp-repo commit --quiet -m 'Auto-export to Notion per folder once notes are generated; remove temp diagnostic')"
     ]
   }
 }

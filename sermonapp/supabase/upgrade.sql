@@ -14,3 +14,8 @@ create table if not exists folders (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Lets a folder auto-export sermons to a specific Notion page/database once
+-- notes finish generating (Settings-free: configured per folder in the app).
+alter table folders add column if not exists notion_target_id text;
+alter table folders add column if not exists notion_target_type text;

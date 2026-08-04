@@ -16,13 +16,17 @@ export async function onRequestPost({ request, env }) {
   }));
   const studyRows = study.map((e) => ({ id: e.id, date: e.date, reference: e.reference, status: e.status || "planned", created_at: e.createdAt, updated_at: e.updatedAt || e.createdAt }));
   const quizRows = quizzes.map((q) => ({ id: q.id, source_type: q.sourceType, title: q.title, score: q.score, total: q.total, taken_at: q.takenAt }));
-  const folderRows = folders.map((f) => ({ id: f.id, name: f.name, parent_id: f.parentId || null, created_at: f.createdAt, updated_at: f.updatedAt || f.createdAt }));
+  const folderRows = folders.map((f) => ({
+    id: f.id, name: f.name, parent_id: f.parentId || null,
+    notion_target_id: f.notionTargetId || null, notion_target_type: f.notionTargetType || null,
+    created_at: f.createdAt, updated_at: f.updatedAt || f.createdAt,
+  }));
 
   try {
     if (sermonRows.length) await upsertSermons(env, sermonRows);
     if (studyRows.length) await supaUpsert(env, "study_plan", studyRows);
     if (quizRows.length) await supaUpsert(env, "quiz_history", quizRows);
-    if (folderRows.length) { try { await supaUpsert(env, "folders", folderRows); } catch { /* folders table may not exist yet */ } }
+    if (folderRows.length) await upsertFolders(env, folderRows);
   } catch (e) {
     return json({ error: e.message }, 502);
   }
@@ -41,6 +45,21 @@ async function upsertSermons(env, rows) {
       const basic = rows.map(({ speaker, quiz_pinned, folder_id, ...rest }) => rest);
       await supaUpsert(env, "sermons", basic);
     } else throw e;
+  }
+}
+
+// Upsert folders; if the newer notion_target_* columns (or the table itself)
+// aren't in the DB yet, retry without them / skip so sync keeps working until
+// the one-time SQL upgrade is run.
+async function upsertFolders(env, rows) {
+  try {
+    await supaUpsert(env, "folders", rows);
+  } catch (e) {
+    if (/column|schema cache|could not find/i.test(e.message || "")) {
+      const basic = rows.map(({ notion_target_id, notion_target_type, ...rest }) => rest);
+      await supaUpsert(env, "folders", basic).catch(() => {});
+    }
+    // else: folders table may not exist yet — skip silently, matching prior behavior
   }
 }
 
