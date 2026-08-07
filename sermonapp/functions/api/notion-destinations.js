@@ -14,6 +14,16 @@ function titleOf(obj) {
   return text || "Untitled page";
 }
 
+// Notion reports a parent as one of workspace / page_id / database_id / block_id.
+// Only page and database parents can be shown as tree branches; anything else
+// (including workspace roots) becomes a top-level entry.
+function parentIdOf(obj) {
+  const p = obj.parent || {};
+  if (p.type === "page_id") return p.page_id;
+  if (p.type === "database_id") return p.database_id;
+  return null;
+}
+
 export async function onRequestGet({ env }) {
   if (!env.NOTION_API_KEY) return json({ error: "Add NOTION_API_KEY first." }, 501);
 
@@ -33,7 +43,7 @@ export async function onRequestGet({ env }) {
     const data = await r.json();
     const items = (data.results || [])
       .filter((o) => o.object === "page" || o.object === "database")
-      .map((o) => ({ id: o.id, type: o.object, title: titleOf(o) }));
+      .map((o) => ({ id: o.id, type: o.object, title: titleOf(o), parentId: parentIdOf(o) }));
     return json({ items });
   } catch (e) {
     return json({ error: e.message }, 502);

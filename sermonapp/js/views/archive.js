@@ -225,18 +225,20 @@ function moveToFolderModal(s, refresh) {
 const LAST_NOTION_TARGET_KEY = "sn_last_notion_target";
 
 // Lets the user pick from every page/database shared with the Notion integration
-// (fetched live via Search), so no ID ever has to be copied by hand. Remembers
-// the last choice as the default for next time.
+// (fetched live via Search), so no ID ever has to be copied by hand. Presented as
+// a drill-down tree mirroring the real Notion hierarchy — tap a page to open its
+// children, or "Use this page" to select it. Remembers the last choice.
 function pickNotionDestination() {
   return new Promise(async (resolve) => {
     const rootEl = document.getElementById("modal-root");
     const close = (val) => { backdrop.remove(); resolve(val); };
 
-    const body = el("div", { class: "stack", style: "max-height:60vh;overflow:auto" }, [spinnerRow("Loading your Notion pages…")]);
+    const crumbs = el("div", { class: "small muted", style: "margin-bottom:8px" });
+    const body = el("div", { class: "stack", style: "max-height:55vh;overflow:auto" }, [spinnerRow("Loading your Notion pages…")]);
     const card = el("div", { class: "modal" }, [
       el("div", { class: "grip" }), el("h2", { text: "Send to Notion" }),
       el("p", { class: "small muted", text: "Pick a page or database you've shared with your integration." }),
-      body,
+      crumbs, body,
       el("button", { class: "btn", style: "margin-top:12px", onClick: () => close(null) }, "Cancel"),
     ]);
     const backdrop = el("div", { class: "modal-backdrop", onClick: (e) => { if (e.target === backdrop) close(null); } }, [card]);
@@ -247,24 +249,64 @@ function pickNotionDestination() {
       const r = await listNotionDestinations();
       items = r.items || [];
     } catch (e) {
+      crumbs.remove();
       body.replaceChildren(el("p", { class: "small muted", text: e.status === 501 ? "Add your Notion API key in Cloudflare first." : (e.message || "Couldn't load Notion pages.") }));
       return;
     }
     if (!items.length) {
+      crumbs.remove();
       body.replaceChildren(el("p", { class: "small muted", text: "Nothing shared yet. In Notion, open a page or database → \"...\" menu → Connections → add your integration, then try again." }));
       return;
     }
 
     let lastId = null;
     try { lastId = JSON.parse(localStorage.getItem(LAST_NOTION_TARGET_KEY) || "null")?.id; } catch {}
-    items.sort((a, b) => (a.id === lastId ? -1 : b.id === lastId ? 1 : 0));
 
-    body.replaceChildren(...items.map((it) =>
-      el("button", { class: "btn ghost", style: "justify-content:flex-start", onClick: () => {
-        localStorage.setItem(LAST_NOTION_TARGET_KEY, JSON.stringify(it));
-        close(it);
-      } }, (it.type === "database" ? "🗂️ " : "📄 ") + it.title + (it.id === lastId ? "  (last used)" : ""))
-    ));
+    const shared = new Set(items.map((it) => it.id));
+    // A page whose parent isn't itself shared has no reachable branch above it,
+    // so it surfaces at the root rather than being hidden inside the tree.
+    const childrenOf = (id) => items.filter((it) => (id === null ? !it.parentId || !shared.has(it.parentId) : it.parentId === id));
+    const choose = (it) => { localStorage.setItem(LAST_NOTION_TARGET_KEY, JSON.stringify(it)); close(it); };
+
+    let path = []; // ancestor items, root-first
+
+    function draw() {
+      const here = path.length ? path[path.length - 1] : null;
+
+      crumbs.replaceChildren(el("button", {
+        class: "btn ghost", style: "width:auto;padding:2px 6px;font-size:inherit", onClick: () => { path = []; draw(); },
+      }, "All pages"));
+      path.forEach((p, i) => {
+        crumbs.append(document.createTextNode(" › "));
+        crumbs.append(el("button", {
+          class: "btn ghost", style: "width:auto;padding:2px 6px;font-size:inherit",
+          onClick: () => { path = path.slice(0, i + 1); draw(); },
+        }, p.title));
+      });
+
+      const rows = [];
+      if (here) {
+        rows.push(el("button", { class: "btn primary", style: "justify-content:flex-start", onClick: () => choose(here) },
+          `✓ Use "${here.title}"`));
+      }
+
+      const kids = childrenOf(here ? here.id : null)
+        .sort((a, b) => (a.id === lastId ? -1 : b.id === lastId ? 1 : a.title.localeCompare(b.title)));
+
+      for (const it of kids) {
+        const hasKids = childrenOf(it.id).length > 0;
+        const label = (it.type === "database" ? "🗂️ " : "📄 ") + it.title + (it.id === lastId ? "  (last used)" : "") + (hasKids ? "   ›" : "");
+        rows.push(el("button", {
+          class: "btn ghost", style: "justify-content:flex-start",
+          onClick: () => { if (hasKids) { path = [...path, it]; draw(); } else choose(it); },
+        }, label));
+      }
+
+      if (!kids.length && !here) rows.push(el("p", { class: "small muted", text: "No pages available." }));
+      body.replaceChildren(...rows);
+    }
+
+    draw();
   });
 }
 
