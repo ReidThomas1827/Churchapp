@@ -14,6 +14,32 @@ const notionHeaders = (env) => ({
   "Content-Type": "application/json",
 });
 
+// Matches the "Aug 6, 2026" style the app uses when it bakes the date into a
+// saved title, so the two can be compared and de-duplicated below.
+function fmtDate(iso) {
+  try {
+    return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", {
+      month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+    });
+  } catch { return iso; }
+}
+
+// The exported Notion page is titled "Sermon — Speaker — Date" so it reads well
+// in a page list. Saved titles already end with the date, so that suffix is
+// stripped first and re-appended after the speaker rather than repeated.
+function pageTitle(sermon) {
+  const dateStr = sermon.date ? fmtDate(sermon.date) : "";
+  let base = String(sermon.title || "").trim();
+  if (dateStr && base.endsWith(dateStr)) {
+    base = base.slice(0, -dateStr.length).replace(/[\s—–-]+$/, "").trim();
+  }
+  const speaker = String(sermon.speaker || "").trim();
+  const parts = [base];
+  if (speaker && !base.toLowerCase().includes(speaker.toLowerCase())) parts.push(speaker);
+  if (dateStr) parts.push(dateStr);
+  return parts.filter(Boolean).join(" — ") || "Sermon";
+}
+
 function rt(content) {
   return [{ type: "text", text: { content: String(content).slice(0, 2000) } }];
 }
@@ -113,7 +139,7 @@ async function buildDatabaseProperties(env, headers, targetId, db, sermon, title
   const finalSpeaker = speakerP || (toAdd.Speaker ? { key: "Speaker", type: "select" } : null);
   const finalType = typeP || (toAdd.Type ? { key: "Type", type: "select" } : null);
 
-  const properties = { [titleKey]: { title: rt(sermon.title) } };
+  const properties = { [titleKey]: { title: rt(pageTitle(sermon)) } };
   if (finalDate) { const v = valueForProp(finalDate.type, sermon.date); if (v) properties[finalDate.key] = v; }
   if (finalSpeaker) { const v = valueForProp(finalSpeaker.type, sermon.speaker); if (v) properties[finalSpeaker.key] = v; }
   if (finalType) { const v = valueForProp(finalType.type, sermon.attended === false ? "Not attended" : (sermon.kind || "Sermon")); if (v) properties[finalType.key] = v; }
@@ -148,7 +174,7 @@ export async function onRequestPost({ request, env }) {
     properties = await buildDatabaseProperties(env, headers, targetId, db, sermon, titleKey);
   } else {
     parent = { page_id: targetId };
-    properties = { title: { title: rt(sermon.title) } };
+    properties = { title: { title: rt(pageTitle(sermon)) } };
   }
 
   const allBlocks = sermonToBlocks(sermon);
