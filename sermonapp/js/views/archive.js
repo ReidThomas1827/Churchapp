@@ -128,10 +128,32 @@ async function resolveFolderTarget(folderId) {
   while (id) {
     const f = await getFolder(id);
     if (!f) return null;
-    if (f.notionTargetId) return { id: f.notionTargetId, type: f.notionTargetType || "page" };
+    if (f.notionTargetId) return { folder: f, id: f.notionTargetId, type: f.notionTargetType || "page", title: f.notionTargetTitle || null };
     id = f.parentId;
   }
   return null;
+}
+
+// A folder's saved Notion target can go stale if that page/database was ever
+// deleted and recreated (same name, new ID — Notion has no concept of
+// "restore," so the app can't tell the difference on its own). When an export
+// 404/403s, look for a *currently shared* destination with the same title and
+// silently re-point the folder at it, so the next export (and this one) just
+// works instead of erroring forever.
+async function autoHealFolderTarget(target, error) {
+  if (!target.folder || !target.title) return null;
+  const notFound = error && (error.status === 404 || error.status === 403 || /make sure you've shared/i.test(error.message || ""));
+  if (!notFound) return null;
+  let items;
+  try { ({ items } = await listNotionDestinations()); } catch { return null; }
+  const match = (items || []).find((it) => it.title.toLowerCase() === target.title.toLowerCase());
+  if (!match) return null;
+  const f = target.folder;
+  f.notionTargetId = match.id;
+  f.notionTargetType = match.type;
+  f.notionTargetTitle = match.title;
+  await saveFolder(f);
+  return { id: match.id, type: match.type, title: match.title };
 }
 
 async function folderMenu(f, root) {
@@ -154,6 +176,7 @@ async function folderMenu(f, root) {
     if (dest) {
       f.notionTargetId = dest.id;
       f.notionTargetType = dest.type;
+      f.notionTargetTitle = dest.title;
       await saveFolder(f);
       toast(`Sermons in "${f.name}" will auto-export to Notion.`, "success");
     }
@@ -377,7 +400,17 @@ async function renderDetail(root, id) {
             await exportNotion({ ...s, notes, targetId: target.id, targetType: target.type });
             toast("Also sent to Notion.", "success");
           } catch (e) {
-            toast("Notes ready, but the Notion export failed: " + (e.message || ""), "error");
+            const healed = await autoHealFolderTarget(target, e);
+            if (healed) {
+              try {
+                await exportNotion({ ...s, notes, targetId: healed.id, targetType: healed.type });
+                toast("Also sent to Notion.", "success");
+              } catch (e2) {
+                toast("Notes ready, but the Notion export failed: " + (e2.message || ""), "error");
+              }
+            } else {
+              toast("Notes ready, but the Notion export failed: " + (e.message || ""), "error");
+            }
           }
         }
       } catch (e) {
