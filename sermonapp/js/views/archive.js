@@ -4,7 +4,7 @@ import {
   listFolders, getFolder, createFolder, saveFolder, deleteFolder, moveSermon,
 } from "../store.js";
 import { transcribe, generateNotes, embedSermon, exportNotion, listNotionDestinations } from "../api.js";
-import { exportPDF, exportDOCX, sermonToMarkdown } from "../export.js";
+import { exportPDF, exportDOCX, sermonToMarkdown, exportAudio } from "../export.js";
 import { openQuiz } from "./quiz.js";
 
 const STATUS = {
@@ -452,6 +452,14 @@ async function renderDetail(root, id) {
   const blob = await getAudio(id);
   if (blob) {
     actions.append(el("audio", { controls: "", src: URL.createObjectURL(blob), style: "width:100%;margin-top:6px" }));
+    actions.append(el("button", {
+      class: "btn", style: "width:auto",
+      // No await before exportAudio: navigator.share needs the tap's gesture intact.
+      onClick: () => exportAudio(s, blob).then((how) => {
+        if (how === "shared") toast("Shared.", "success");
+        else if (how === "downloaded") toast("Downloading the recording.", "success");
+      }).catch((e) => toast(e.message || "Couldn't export the audio.", "error")),
+    }, "Export audio"));
     if (s.transcript) {
       actions.append(el("button", {
         class: "btn ghost", style: "width:auto",

@@ -121,3 +121,34 @@ export function sermonToMarkdown(sermon, { includeTranscript = false } = {}) {
   }
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
+
+function audioExt(mime) {
+  const m = String(mime || "");
+  if (m.includes("mp4") || m.includes("aac")) return "m4a"; // what iOS records
+  if (m.includes("webm")) return "webm";
+  if (m.includes("ogg")) return "ogg";
+  if (m.includes("mpeg")) return "mp3";
+  if (m.includes("wav")) return "wav";
+  return "audio";
+}
+
+// Hands the raw recording to the OS. iOS Safari ignores <a download>, so the
+// share sheet (Files, AirDrop, Mail) is the only route off an iPad; desktop
+// browsers fall back to a normal download. Must be called straight from a tap —
+// navigator.share needs the user gesture still active.
+export async function exportAudio(sermon, blob) {
+  const name = filename(sermon, audioExt(blob.type || sermon.mimeType));
+  const type = blob.type || sermon.mimeType || "audio/mp4";
+  try {
+    const file = new File([blob], name, { type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: sermon.title || "Sermon recording" });
+      return "shared";
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return "cancelled";
+    // Anything else (share unsupported for files, transient failure) → download.
+  }
+  download(blob, name);
+  return "downloaded";
+}
