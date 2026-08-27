@@ -4,7 +4,7 @@ import {
   listFolders, getFolder, createFolder, saveFolder, deleteFolder, moveSermon,
 } from "../store.js";
 import { transcribe, generateNotes, embedSermon, exportNotion, listNotionDestinations } from "../api.js";
-import { exportPDF, exportDOCX } from "../export.js";
+import { exportPDF, exportDOCX, sermonToMarkdown } from "../export.js";
 import { openQuiz } from "./quiz.js";
 
 const STATUS = {
@@ -220,6 +220,63 @@ function moveToFolderModal(s, refresh) {
     const backdrop = el("div", { class: "modal-backdrop", onClick: (e) => { if (e.target === backdrop) close(); } }, [card]);
     rootEl.append(backdrop);
   });
+}
+
+const OBSIDIAN_VAULT = "Main";
+const OBSIDIAN_FOLDER = "Sermon Notes";
+// No official cap exists for custom-scheme URLs, but handoff to the app gets
+// unreliable well before Safari's own limit, so the note body is trimmed to
+// keep the whole URI comfortably under this.
+const OBSIDIAN_URL_LIMIT = 8000;
+
+// "Sermon Notes/2026-08-30 The Prodigal Son" — date first so the folder sorts
+// chronologically. Characters Obsidian disallows in filenames are stripped.
+function obsidianFilePath(s) {
+  let base = String(s.title || "Sermon");
+  // Saved titles already end with the date ("... - Aug 6, 2026"); strip it so
+  // the ISO date prefix below doesn't repeat it.
+  const baked = s.date ? fmtDateShort(s.date) : "";
+  if (baked && base.endsWith(baked)) base = base.slice(0, -baked.length).replace(/[\s\u2014\u2013-]+$/, "");
+  base = base
+    .replace(/[\\/:*?"<>|#^[\]]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "Sermon";
+  const name = s.date ? `${s.date} ${base}` : base;
+  return `${OBSIDIAN_FOLDER}/${name}`;
+}
+
+// Builds obsidian://new. Uses `file` rather than `name` because only `file`
+// accepts a vault-relative folder path. Returns the URI plus whether the body
+// had to be trimmed to fit.
+function buildObsidianUri(s) {
+  const filePath = obsidianFilePath(s);
+  const head = `obsidian://new?vault=${encodeURIComponent(OBSIDIAN_VAULT)}` +
+    `&file=${encodeURIComponent(filePath)}&append=true&content=`;
+  let body = sermonToMarkdown(s);
+  let truncated = false;
+  while (head.length + encodeURIComponent(body).length > OBSIDIAN_URL_LIMIT && body.length > 200) {
+    body = body.slice(0, Math.floor(body.length * 0.9));
+    truncated = true;
+  }
+  if (truncated) {
+    // Drop the partial word left by slicing - but not when the tail has no
+    // spaces at all, where that regex would eat most of the note.
+    const tidy = body.replace(/\s+\S*$/, "");
+    body = (tidy.length > body.length * 0.8 ? tidy : body) + "\n\n*(truncated - open the app for the full note)*\n";
+  }
+  return { uri: head + encodeURIComponent(body), truncated, filePath };
+}
+
+// Custom URL schemes only open on iOS from a genuine user gesture, so this
+// clicks a real anchor synchronously inside the button's click handler rather
+// than redirecting after any await.
+function saveToObsidian(s) {
+  const { uri, truncated, filePath } = buildObsidianUri(s);
+  const a = el("a", { href: uri, rel: "noopener" });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast(truncated ? `Sent a shortened note to ${filePath}.` : `Sent to Obsidian → ${filePath}.`, truncated ? "error" : "success");
 }
 
 const LAST_NOTION_TARGET_KEY = "sn_last_notion_target";
@@ -501,6 +558,7 @@ async function renderDetail(root, id) {
     }
     notionBtn.disabled = false; notionBtn.textContent = orig;
   });
+  const obsidianBtn = el("button", { class: "btn", style: "margin-top:10px", onClick: () => saveToObsidian(s) }, "Save to Obsidian");
   const delBtn = el("button", {
     class: "btn danger",
     onClick: async () => {
@@ -514,5 +572,5 @@ async function renderDetail(root, id) {
 
   root.append(back, head, el("hr", { class: "sep" }), actions,
     (s.notes || s.transcript) ? content : el("p", { class: "muted small", text: s.attended ? "Transcribe the audio to unlock notes, quizzes, and export." : "This week was marked as not attending." }),
-    el("hr", { class: "sep" }), s.attended ? exportRow : null, s.attended ? notionBtn : null, delBtn);
+    el("hr", { class: "sep" }), s.attended ? exportRow : null, s.attended ? notionBtn : null, s.attended ? obsidianBtn : null, delBtn);
 }

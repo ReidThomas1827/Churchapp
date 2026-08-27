@@ -103,3 +103,21 @@ export async function exportDOCX(sermon) {
   const doc = new Document({ sections: [{ children: kids }] });
   download(await Packer.toBlob(doc), filename(sermon, "docx"));
 }
+
+// Markdown rendering of the same blocks the PDF/Word exports use, for handing a
+// note to Obsidian. The transcript is opt-in: it runs to tens of thousands of
+// characters, which no URL scheme can carry.
+export function sermonToMarkdown(sermon, { includeTranscript = false } = {}) {
+  const lines = [];
+  for (const b of notesToBlocks(sermon)) {
+    if (b.type === "title") lines.push(`# ${b.text}`, "");
+    else if (b.type === "meta") lines.push(`*${b.text}*`, "");
+    else if (b.type === "h2") {
+      if (b.text === "Transcript" && !includeTranscript) break;
+      if (lines.length && lines[lines.length - 1] !== "") lines.push(""); // keep a list from running into the next heading
+      lines.push(`## ${b.text}`, "");
+    } else if (b.type === "bullet") lines.push(`- ${b.text}`);
+    else lines.push(b.text, "");
+  }
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
