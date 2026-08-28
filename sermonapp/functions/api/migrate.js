@@ -14,7 +14,10 @@ export async function onRequestPost({ request, env }) {
     mime_type: s.mimeType, quiz_pinned: !!s.quizPinned, folder_id: s.folderId || null,
     created_at: s.createdAt, updated_at: s.updatedAt || s.createdAt,
   }));
-  const studyRows = study.map((e) => ({ id: e.id, date: e.date, reference: e.reference, status: e.status || "planned", created_at: e.createdAt, updated_at: e.updatedAt || e.createdAt }));
+  const studyRows = study.map((e) => ({
+    id: e.id, date: e.date, reference: e.reference, status: e.status || "planned", notified: !!e.notified,
+    created_at: e.createdAt, updated_at: e.updatedAt || e.createdAt,
+  }));
   const quizRows = quizzes.map((q) => ({ id: q.id, source_type: q.sourceType, title: q.title, score: q.score, total: q.total, taken_at: q.takenAt }));
   const folderRows = folders.map((f) => ({
     id: f.id, name: f.name, parent_id: f.parentId || null,
@@ -24,7 +27,7 @@ export async function onRequestPost({ request, env }) {
 
   try {
     if (sermonRows.length) await upsertSermons(env, sermonRows);
-    if (studyRows.length) await supaUpsert(env, "study_plan", studyRows);
+    if (studyRows.length) await upsertStudy(env, studyRows);
     if (quizRows.length) await supaUpsert(env, "quiz_history", quizRows);
     if (folderRows.length) await upsertFolders(env, folderRows);
   } catch (e) {
@@ -44,6 +47,19 @@ async function upsertSermons(env, rows) {
     if (/column|schema cache|could not find/i.test(e.message || "")) {
       const basic = rows.map(({ speaker, quiz_pinned, folder_id, ...rest }) => rest);
       await supaUpsert(env, "sermons", basic);
+    } else throw e;
+  }
+}
+
+// Upsert study-plan entries; if the newer `notified` column isn't in the DB
+// yet, retry without it so sync keeps working until the SQL upgrade is run.
+async function upsertStudy(env, rows) {
+  try {
+    await supaUpsert(env, "study_plan", rows);
+  } catch (e) {
+    if (/column|schema cache|could not find/i.test(e.message || "")) {
+      const basic = rows.map(({ notified, ...rest }) => rest);
+      await supaUpsert(env, "study_plan", basic);
     } else throw e;
   }
 }

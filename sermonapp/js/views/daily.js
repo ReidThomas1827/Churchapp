@@ -1,6 +1,6 @@
-import { el, todayISO } from "../ui.js";
+import { el } from "../ui.js";
 import { apiUrl } from "../config.js";
-import { latestQuizSermon, listStudy, lastScore } from "../store.js";
+import { latestQuizSermon, latestQuizStudyEntry, lastScore } from "../store.js";
 import { openQuiz } from "./quiz.js";
 
 function isStandalone() {
@@ -17,6 +17,10 @@ function fmtMin(min) {
 function reminderNote(sched, minKey, sentKey) {
   if (!sched || sched[minKey] == null) return "";
   return sched[sentKey] ? `🔔 Reminder sent ~${fmtMin(sched[minKey])}` : `🔔 Reminder set for ${fmtMin(sched[minKey])}`;
+}
+function studyReminderNote(study) {
+  if (!study || study.checkAfterMin == null) return "";
+  return study.notified ? `🔔 Reminder sent ~${fmtMin(study.checkAfterMin)}` : `🔔 Reminder set for ${fmtMin(study.checkAfterMin)}`;
 }
 
 function quizCard({ tag, title, sub, note, onClick }) {
@@ -50,8 +54,12 @@ export async function renderDaily(root) {
     root.appendChild(hint);
   }
 
-  let sched = null;
-  try { const s = await fetch(apiUrl("/api/notify-status")).then((r) => (r.ok ? r.json() : null)); sched = s && s.schedule; } catch {}
+  let sched = null, studyStatus = null;
+  try {
+    const s = await fetch(apiUrl("/api/notify-status")).then((r) => (r.ok ? r.json() : null));
+    sched = s && s.schedule;
+    studyStatus = s && s.study;
+  } catch {}
 
   const sermon = await latestQuizSermon();
   if (sermon) {
@@ -65,15 +73,15 @@ export async function renderDaily(root) {
     }));
   }
 
-  const studyToday = (await listStudy()).find((e) => e.date === todayISO());
-  if (studyToday) {
-    const prev = await lastScore("study", studyToday.reference);
+  const studyEntry = await latestQuizStudyEntry();
+  if (studyEntry) {
+    const prev = await lastScore("study", studyEntry.reference);
     root.appendChild(quizCard({
-      tag: "Today’s study quiz",
-      title: studyToday.reference,
+      tag: "Study quiz",
+      title: studyEntry.reference,
       sub: prev ? `Last score: ${prev.score}/${prev.total}` : "Not taken yet",
-      note: reminderNote(sched, "studyMin", "studySent"),
-      onClick: () => openQuiz({ type: "study", reference: studyToday.reference, title: studyToday.reference }),
+      note: studyReminderNote(studyStatus),
+      onClick: () => openQuiz({ type: "study", reference: studyEntry.reference, title: studyEntry.reference }),
     }));
   }
 }

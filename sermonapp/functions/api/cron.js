@@ -18,6 +18,15 @@ function localParts(tz) {
   return { day: `${p.year}-${p.month}-${p.day}`, minutes: (parseInt(p.hour) % 24) * 60 + parseInt(p.minute), weekday: p.weekday };
 }
 
+// Local calendar day (YYYY-MM-DD) for an arbitrary UTC timestamp — needed
+// because comparing raw UTC dates against the user's local "today" can be off
+// by a day near midnight.
+function localDayOf(isoString, tz) {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+  const p = Object.fromEntries(fmt.formatToParts(new Date(isoString)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
 async function sendToAll(env, payload) {
   const subs = await supaSelect(env, "push_subscriptions");
   const vapid = {
@@ -63,14 +72,20 @@ export async function onRequest({ request, env }) {
     await supaUpsert(env, "notify_schedule", [sched]);
   }
 
-  // Study quiz — only when a passage is scheduled for today.
-  if (!sched.study_sent && minutes >= sched.study_min) {
-    const today = (await supaSelect(env, "study_plan", `date=eq.${day}&select=reference&limit=1`))[0];
-    if (today) {
-      out.studySent = await sendToAll(env, { title: "Study plan quiz", body: `Today's passage: ${today.reference}`, url: "./index.html#quiz-study" });
+  // Study quiz — targets whichever study-plan entry was most recently logged,
+  // but only once it's from a PRIOR day (read tonight, quizzed starting
+  // tomorrow). Dedup lives on the entry itself (`notified`), not on today's
+  // schedule row, so if it's missed today it keeps retrying on later days at a
+  // fresh random time — right up until a newer entry supersedes it entirely.
+  if (minutes >= sched.study_min) {
+    const latest = (await supaSelect(env, "study_plan", "select=id,reference,created_at,notified&order=created_at.desc&limit=1"))[0];
+    if (latest && !latest.notified) {
+      const loggedDay = localDayOf(latest.created_at, env.QUIZ_TZ || "America/New_York");
+      if (loggedDay < day) {
+        out.studySent = await sendToAll(env, { title: "Study plan quiz", body: `Time to quiz on: ${latest.reference}`, url: "./index.html#quiz-study" });
+        if (out.studySent) await supaUpsert(env, "study_plan", [{ id: latest.id, notified: true }]).catch(() => {});
+      }
     }
-    sched.study_sent = true;
-    await supaUpsert(env, "notify_schedule", [sched]);
   }
 
   return json(out);

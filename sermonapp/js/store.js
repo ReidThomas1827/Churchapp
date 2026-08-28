@@ -1,7 +1,7 @@
 // Domain operations over IndexedDB. These mirror the eventual Supabase tables
 // so syncing can be layered on later without changing callers.
 import * as db from "./db.js";
-import { uid } from "./ui.js";
+import { uid, todayISO } from "./ui.js";
 import { pushSermon, pushStudy, pushQuiz, removeSermonRemote, removeStudyRemote, pushFolder, removeFolderRemote } from "./sync.js";
 
 // Sermon status: recorded | transcribing | transcribed | noting | noted | skipped | error
@@ -82,10 +82,24 @@ export async function listStudy() {
   return all.sort((a, b) => b.date.localeCompare(a.date));
 }
 export async function addStudy({ date, reference }) {
-  const entry = { id: uid(), date, reference, status: "planned", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const entry = { id: uid(), date, reference, status: "planned", notified: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   await db.put("study", entry);
   pushStudy(entry);
   return entry;
+}
+
+// The study entry that's currently "live" for quizzing: whichever was logged
+// most recently, but only once it's from a prior day (read tonight, quizzable
+// starting tomorrow). Logging a newer entry immediately supersedes this — it's
+// always just "the latest one, if it's old enough yet."
+export async function latestQuizStudyEntry() {
+  const all = await db.getAll("study");
+  if (!all.length) return null;
+  const sorted = [...all].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const latest = sorted[0];
+  const loggedDay = (latest.createdAt || "").slice(0, 10);
+  if (loggedDay >= todayISO()) return null; // logged today (or later, e.g. clock skew) — not eligible yet
+  return latest;
 }
 export function saveStudy(entry) {
   entry.updatedAt = new Date().toISOString();
