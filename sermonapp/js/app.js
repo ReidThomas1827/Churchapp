@@ -4,8 +4,8 @@ import { renderStudy } from "./views/study.js";
 import { renderSearch } from "./views/search.js";
 import { openSettings } from "./views/settings.js";
 import { openQuiz } from "./views/quiz.js";
-import { latestQuizSermon, listStudy } from "./store.js";
-import { todayISO, toast } from "./ui.js";
+import { latestQuizSermon, latestQuizStudyEntry, listStudy } from "./store.js";
+import { toast } from "./ui.js";
 import { pullAll } from "./sync.js";
 
 const byId = (id) => document.getElementById(id);
@@ -44,8 +44,9 @@ async function takeSermonQuiz() {
   openQuiz({ type: "sermon", title: s.title, transcript: s.transcript, notes: s.notes });
 }
 async function takeStudyQuiz() {
-  const entries = await listStudy();
-  const e = entries.find((x) => x.date === todayISO()) || entries[0];
+  // Prefer the properly "eligible" entry; fall back to the most recent one
+  // regardless (e.g. you logged a newer reading right before tapping the push).
+  const e = (await latestQuizStudyEntry()) || (await listStudy())[0];
   if (!e) return toast("No study passage is planned.");
   openQuiz({ type: "study", reference: e.reference, title: e.reference });
 }
@@ -64,8 +65,13 @@ pullAll().then((changed) => { if (changed) render(current); }).catch(() => {});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
-  // Notification taps on an already-open app arrive as a message.
   navigator.serviceWorker.addEventListener("message", (e) => {
     if (e.data && e.data.type === "navigate") handleRoute(e.data.url);
   });
+}
+
+// Ask the browser to keep our IndexedDB data (audio, transcripts, notes)
+// persistent so iOS Safari won't silently evict it under storage pressure.
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
 }
