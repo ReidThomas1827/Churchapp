@@ -1,9 +1,9 @@
 import { json, supaConfigured, supaSelect, supaUpsert, supaDelete } from "./_lib.js";
 import { sendPush } from "./_webpush.js";
 
-// Called on a schedule by an external trigger (e.g. cron-job.org) every ~15 min,
-// Mon–Sat, with ?key=CRON_SECRET. Each day it rolls one random time per quiz in
-// the 9am–9pm window and fires the push once that time has passed.
+// Called on a schedule (GitHub Actions) every 15 min, Mon–Sat, with
+// ?key=CRON_SECRET. Each day it rolls one random sermon-quiz time in the
+// 9am–9pm window and fires the push once that time has passed.
 
 const WINDOW_START = 9 * 60;   // 9:00
 const WINDOW_END = 21 * 60;    // 21:00
@@ -16,15 +16,6 @@ function localParts(tz) {
   });
   const p = Object.fromEntries(fmt.formatToParts(new Date()).map((x) => [x.type, x.value]));
   return { day: `${p.year}-${p.month}-${p.day}`, minutes: (parseInt(p.hour) % 24) * 60 + parseInt(p.minute), weekday: p.weekday };
-}
-
-// Local calendar day (YYYY-MM-DD) for an arbitrary UTC timestamp — needed
-// because comparing raw UTC dates against the user's local "today" can be off
-// by a day near midnight.
-function localDayOf(isoString, tz) {
-  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
-  const p = Object.fromEntries(fmt.formatToParts(new Date(isoString)).map((x) => [x.type, x.value]));
-  return `${p.year}-${p.month}-${p.day}`;
 }
 
 async function sendToAll(env, payload) {
@@ -56,15 +47,17 @@ export async function onRequest({ request, env }) {
 
   let sched = (await supaSelect(env, "notify_schedule", `day=eq.${day}&select=*`))[0];
   if (!sched) {
+    // study_min/study_sent are still written (unused now) in case the
+    // notify_schedule columns require a value — harmless either way.
     sched = { day, sermon_min: randMin(), study_min: randMin(), sermon_sent: false, study_sent: false };
     await supaUpsert(env, "notify_schedule", [sched]);
   }
 
-  const out = { day, minutes, sermonSent: 0, studySent: 0 };
+  const out = { day, minutes, sermonSent: 0 };
 
   // Sermon quiz — paused unless the latest sermon was attended + transcribed.
-  // Wrapped so a problem here (e.g. a transient Supabase error) can't also
-  // block the independent study-quiz check below.
+  // (Study-plan quiz notifications were removed — unused feature the user
+  // didn't want pings for. The Study Plan tab itself is untouched.)
   try {
     if (!sched.sermon_sent && minutes >= sched.sermon_min) {
       const latest = (await supaSelect(env, "sermons", "select=attended,transcript&order=date.desc&limit=1"))[0];
@@ -76,28 +69,6 @@ export async function onRequest({ request, env }) {
     }
   } catch (e) {
     out.sermonError = e.message;
-  }
-
-  // Study quiz — targets whichever study-plan entry was most recently logged,
-  // but only once it's from a PRIOR day (read tonight, quizzed starting
-  // tomorrow). Dedup lives on the entry itself (`notified`), not on today's
-  // schedule row, so if it's missed today it keeps retrying on later days at a
-  // fresh random time — right up until a newer entry supersedes it entirely.
-  // Wrapped because `notified` may not exist yet on study_plan (see
-  // notify-status.js) and shouldn't be able to take down the sermon check above.
-  try {
-    if (minutes >= sched.study_min) {
-      const latest = (await supaSelect(env, "study_plan", "select=id,reference,created_at,notified&order=created_at.desc&limit=1"))[0];
-      if (latest && !latest.notified) {
-        const loggedDay = localDayOf(latest.created_at, env.QUIZ_TZ || "America/New_York");
-        if (loggedDay < day) {
-          out.studySent = await sendToAll(env, { title: "Study plan quiz", body: `Time to quiz on: ${latest.reference}`, url: "./index.html#quiz-study" });
-          if (out.studySent) await supaUpsert(env, "study_plan", [{ id: latest.id, notified: true }]).catch(() => {});
-        }
-      }
-    }
-  } catch (e) {
-    out.studyError = e.message;
   }
 
   return json(out);
