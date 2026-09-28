@@ -1,0 +1,17 @@
+name: Sermon quiz notifications
+
+# Replaces an unreliable third-party cron service (cron-job.org repeatedly
+# stopped firing). GitHub Actions' own scheduler hits the same endpoint every
+# 15 minutes; the endpoint itself decides whether it's actually time to send
+# based on the random daily window and weekday (see functions/api/cron.js).
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        run: curl -sf "https://churchapp-b4m.pages.dev/api/cron?key=${{ secrets.CRON_KEY }}"
