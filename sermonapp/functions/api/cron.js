@@ -63,13 +63,19 @@ export async function onRequest({ request, env }) {
   const out = { day, minutes, sermonSent: 0, studySent: 0 };
 
   // Sermon quiz — paused unless the latest sermon was attended + transcribed.
-  if (!sched.sermon_sent && minutes >= sched.sermon_min) {
-    const latest = (await supaSelect(env, "sermons", "select=attended,transcript&order=date.desc&limit=1"))[0];
-    if (latest && latest.attended && latest.transcript) {
-      out.sermonSent = await sendToAll(env, { title: "Sermon quiz", body: "Tap to test yourself on Sunday's sermon.", url: "./index.html#quiz-sermon" });
+  // Wrapped so a problem here (e.g. a transient Supabase error) can't also
+  // block the independent study-quiz check below.
+  try {
+    if (!sched.sermon_sent && minutes >= sched.sermon_min) {
+      const latest = (await supaSelect(env, "sermons", "select=attended,transcript&order=date.desc&limit=1"))[0];
+      if (latest && latest.attended && latest.transcript) {
+        out.sermonSent = await sendToAll(env, { title: "Sermon quiz", body: "Tap to test yourself on Sunday's sermon.", url: "./index.html#quiz-sermon" });
+      }
+      sched.sermon_sent = true;
+      await supaUpsert(env, "notify_schedule", [sched]);
     }
-    sched.sermon_sent = true;
-    await supaUpsert(env, "notify_schedule", [sched]);
+  } catch (e) {
+    out.sermonError = e.message;
   }
 
   // Study quiz — targets whichever study-plan entry was most recently logged,
@@ -77,15 +83,21 @@ export async function onRequest({ request, env }) {
   // tomorrow). Dedup lives on the entry itself (`notified`), not on today's
   // schedule row, so if it's missed today it keeps retrying on later days at a
   // fresh random time — right up until a newer entry supersedes it entirely.
-  if (minutes >= sched.study_min) {
-    const latest = (await supaSelect(env, "study_plan", "select=id,reference,created_at,notified&order=created_at.desc&limit=1"))[0];
-    if (latest && !latest.notified) {
-      const loggedDay = localDayOf(latest.created_at, env.QUIZ_TZ || "America/New_York");
-      if (loggedDay < day) {
-        out.studySent = await sendToAll(env, { title: "Study plan quiz", body: `Time to quiz on: ${latest.reference}`, url: "./index.html#quiz-study" });
-        if (out.studySent) await supaUpsert(env, "study_plan", [{ id: latest.id, notified: true }]).catch(() => {});
+  // Wrapped because `notified` may not exist yet on study_plan (see
+  // notify-status.js) and shouldn't be able to take down the sermon check above.
+  try {
+    if (minutes >= sched.study_min) {
+      const latest = (await supaSelect(env, "study_plan", "select=id,reference,created_at,notified&order=created_at.desc&limit=1"))[0];
+      if (latest && !latest.notified) {
+        const loggedDay = localDayOf(latest.created_at, env.QUIZ_TZ || "America/New_York");
+        if (loggedDay < day) {
+          out.studySent = await sendToAll(env, { title: "Study plan quiz", body: `Time to quiz on: ${latest.reference}`, url: "./index.html#quiz-study" });
+          if (out.studySent) await supaUpsert(env, "study_plan", [{ id: latest.id, notified: true }]).catch(() => {});
+        }
       }
     }
+  } catch (e) {
+    out.studyError = e.message;
   }
 
   return json(out);
